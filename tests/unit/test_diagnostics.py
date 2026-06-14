@@ -46,6 +46,7 @@ def _make_coordinator(
     rollup_alert_count: int = 0,
     rollup_open_count: int = 0,
     category_states: dict[str, CategoryState] | None = None,
+    unrecognised_keys: dict[str, int] | None = None,
 ) -> MagicMock:
     coordinator = MagicMock()
     coordinator.any_alerting = any_alerting
@@ -56,6 +57,7 @@ def _make_coordinator(
         if category_states is not None
         else {cat: CategoryState(category=cat) for cat in ALL_CATEGORIES}
     )
+    coordinator.unrecognised_keys = unrecognised_keys if unrecognised_keys is not None else {}
     return coordinator
 
 
@@ -180,3 +182,32 @@ async def test_diagnostics_per_category_last_cleared_at_none_when_unset() -> Non
         assert entry["last_cleared_at"] is None
         assert entry["last_webhook_at"] is None
         assert entry["webhook_health"] == "never_received"
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_includes_unrecognised_keys() -> None:
+    """unrecognised_keys in coordinator appear in diagnostics sorted by count descending."""
+    coordinator = _make_coordinator(
+        unrecognised_keys={"SOME_UNKNOWN_KEY": 3, "ANOTHER_WEIRD_KEY": 1, "FOO_BAR": 7}
+    )
+    entry = _make_entry_with_runtime(coordinator)
+    hass = MagicMock()
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    unrecognised = result["coordinator"]["unrecognised_keys"]
+    assert unrecognised == {"FOO_BAR": 7, "SOME_UNKNOWN_KEY": 3, "ANOTHER_WEIRD_KEY": 1}
+    # Verify sort order (descending by count)
+    assert list(unrecognised.keys()) == ["FOO_BAR", "SOME_UNKNOWN_KEY", "ANOTHER_WEIRD_KEY"]
+
+
+@pytest.mark.asyncio
+async def test_diagnostics_unrecognised_keys_empty_when_all_classified() -> None:
+    """When no unrecognised keys have been seen, the field is an empty dict."""
+    coordinator = _make_coordinator(unrecognised_keys={})
+    entry = _make_entry_with_runtime(coordinator)
+    hass = MagicMock()
+
+    result = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert result["coordinator"]["unrecognised_keys"] == {}
