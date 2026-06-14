@@ -1053,3 +1053,57 @@ class TestOptionsFlowSiteValidation:
         call_args = mock_cls.call_args
         assert call_args.args[1] == "https://10.0.0.2"
         assert result["step_id"] == "finish"
+
+    @pytest.mark.asyncio
+    async def test_cannot_connect_during_site_validation_shows_error(self) -> None:
+        """A CannotConnectError during site validation maps to cannot_connect base error."""
+        from custom_components.unifi_alerts.const import CONF_SITE
+        from custom_components.unifi_alerts.unifi_client import CannotConnectError
+
+        flow = make_options_flow()
+        flow.async_show_form = MagicMock(return_value={"type": "form", "step_id": "categories"})
+
+        cat_input = {f"cat_{cat}": True for cat in ALL_CATEGORIES}
+        cat_input[CONF_SITE] = "sitename"
+
+        with (
+            patch(
+                "custom_components.unifi_alerts.config_flow.async_get_clientsession",
+                return_value=MagicMock(),
+            ),
+            patch("custom_components.unifi_alerts.config_flow.UniFiClient") as mock_cls,
+        ):
+            instance = mock_cls.return_value
+            instance.authenticate = AsyncMock(return_value="apikey")
+            instance.fetch_alarms = AsyncMock(side_effect=CannotConnectError("Connection refused"))
+            result = await flow.async_step_categories(cat_input)
+
+        assert result["step_id"] == "categories"
+        call_kwargs = flow.async_show_form.call_args.kwargs
+        assert call_kwargs["errors"].get("base") == "cannot_connect"
+
+    @pytest.mark.asyncio
+    async def test_unexpected_error_during_site_validation_shows_unknown(self) -> None:
+        """An unexpected error during site validation maps to the unknown base error."""
+        from custom_components.unifi_alerts.const import CONF_SITE
+
+        flow = make_options_flow()
+        flow.async_show_form = MagicMock(return_value={"type": "form", "step_id": "categories"})
+
+        cat_input = {f"cat_{cat}": True for cat in ALL_CATEGORIES}
+        cat_input[CONF_SITE] = "sitename"
+
+        with (
+            patch(
+                "custom_components.unifi_alerts.config_flow.async_get_clientsession",
+                return_value=MagicMock(),
+            ),
+            patch("custom_components.unifi_alerts.config_flow.UniFiClient") as mock_cls,
+        ):
+            instance = mock_cls.return_value
+            instance.authenticate = AsyncMock(side_effect=RuntimeError("boom"))
+            result = await flow.async_step_categories(cat_input)
+
+        assert result["step_id"] == "categories"
+        call_kwargs = flow.async_show_form.call_args.kwargs
+        assert call_kwargs["errors"].get("base") == "unknown"
