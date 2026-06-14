@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import logging
 import secrets
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import voluptuous as vol
-from homeassistant.components import ssdp
 from homeassistant.components.webhook import async_generate_url
+
+if TYPE_CHECKING:
+    from homeassistant.components import ssdp
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
 from homeassistant.helpers import issue_registry as ir
