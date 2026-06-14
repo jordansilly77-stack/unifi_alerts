@@ -27,6 +27,7 @@
 ### Internal
 
 - Added test coverage reporting via Codecov: `pytest-cov` added to dev requirements, 95% floor enforced in CI and locally (`--cov-fail-under=95`), XML report uploaded to Codecov on every push, live badge added to README and info.md. `make coverage` generates an HTML report locally; `.coverage`, `coverage.xml`, and `htmlcov/` added to `.gitignore`.
+- Added unicode round-trip tests for `UniFiAlert` serialisation: emoji, CJK, and RTL text survive `to_dict`/`from_dict` without mangling, and 300-character unicode messages are clamped to 255 characters. Added large-batch determinism tests: 500-alert `CategoryState` count is exact, watermark filtering passes precisely the expected subset, and all 500 messages survive serialisation round-trip. ([#140])
 
 ## [1.7.0] - 2026-05-29
 
