@@ -9,6 +9,7 @@
 
 ### Changed
 
+- Category binary sensors now expose a `last_severity` attribute containing the severity string from the most recent alert (`"LOW"`, `"MEDIUM"`, `"HIGH"`, `"VERY_HIGH"` on v2 controllers; raw webhook severity on legacy controllers). The `any_alert` rollup sensor exposes the same attribute. Automations can condition on this to suppress or escalate alerts by severity without disabling the category. ([#135])
 - Event entities (`event.unifi_alerts_*`) no longer replay the most-recent persisted alert as a fresh `alert_received` event when the integration reloads (for example after an options-flow save). The per-entity counter is now seeded from the restored category state in `async_added_to_hass` instead of resetting to zero. ([#116])
 - The last-message sensor now returns `None` (HA "unknown") instead of the hardcoded English string "No alerts yet" when no alert has been received, eliminating the only remaining hard-coded user-facing string in the platform files. ([#138])
 - Entity display names for last-message, open-count, and event entities now use a colon separator instead of an em-dash (e.g. `{category}: Last Message`). ([#138])
