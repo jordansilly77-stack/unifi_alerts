@@ -4,6 +4,7 @@
 
 ### Added
 
+- UniFi OS consoles (UDM, UDM Pro, UDM SE, UDM Pro Max) are now discovered automatically via SSDP. When one is found on the local network it appears in Settings > Integrations > Discovered, with the controller URL pre-filled. Credentials still need to be entered manually. ([#172])
 - Per-category webhook health signal. Each category binary sensor now exposes a `webhook_health` attribute (`never_received`, `healthy`, or `stale`) and a `last_webhook_at` timestamp, so you can confirm the Alarm Manager wiring works without waiting for a real alert. `healthy` means a webhook arrived within the last 7 days; `stale` means the last one is older than that (expected for rarely-firing categories). Both fields also appear per category in the diagnostics download and survive a config-entry reload. ([#117])
 - A failed watermark save now raises a repair issue in Settings > Repairs warning that cleared alerts may reappear after a restart and to check disk space. The issue clears itself on the next successful save. ([#163])
 

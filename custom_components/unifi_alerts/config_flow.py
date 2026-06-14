@@ -7,6 +7,7 @@ import secrets
 from typing import Any, cast
 
 import voluptuous as vol
+from homeassistant.components import ssdp
 from homeassistant.components.webhook import async_generate_url
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback
@@ -135,9 +136,12 @@ class UniFiAlertsConfigFlow(ConfigFlow, domain=DOMAIN):
                 }
             )
         else:
+            # Use a pre-filled URL when arriving via SSDP discovery;
+            # fall back to the example placeholder for manual setup.
+            _url_default = self._controller_url or "https://192.168.1.1"
             schema = vol.Schema(
                 {
-                    vol.Required(CONF_CONTROLLER_URL, default="https://192.168.1.1"): str,
+                    vol.Required(CONF_CONTROLLER_URL, default=_url_default): str,
                     vol.Optional(CONF_USERNAME): str,
                     vol.Optional(CONF_PASSWORD): _password_selector,
                     vol.Optional(CONF_API_KEY): _api_key_selector,
@@ -150,6 +154,26 @@ class UniFiAlertsConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
             description_placeholders={"docs_url": "https://github.com/PHeonix25/unifi_alerts"},
         )
+
+    async def async_step_ssdp(self, discovery_info: ssdp.SsdpServiceInfo) -> ConfigFlowResult:
+        """Handle a UniFi OS console discovered via SSDP on the local network.
+
+        Extracts the controller IP from the SSDP location URL, pre-fills the
+        controller URL field with https://{host}, and deduplicates against
+        existing entries. The user still needs to enter credentials.
+        """
+        from urllib.parse import urlparse
+
+        parsed = urlparse(discovery_info.ssdp_location or "")
+        host = parsed.hostname or ""
+        if not host:
+            return self.async_abort(reason="cannot_connect")
+
+        self._controller_url = f"https://{host}"
+        await self.async_set_unique_id(self._controller_url)
+        self._abort_if_unique_id_configured()
+        self.context["title_placeholders"] = {"name": host}
+        return await self.async_step_user()
 
     async def async_step_categories(
         self, user_input: dict[str, Any] | None = None
